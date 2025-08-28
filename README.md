@@ -218,7 +218,4 @@ Best models are saved as `logs/{MODEL}_{LR}_{DROPOUT}_best_model.pt`
 
 ## 📚 Citation
 
-If you use this framework in your research, please cite:
-
-```bibtex
-```
+If you use this framework in your research, please cite.
