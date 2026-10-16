@@ -1,0 +1,10 @@
+# Paper's reference learning-library versions. Select CPU/CUDA torch wheel for your host.
+torch==2.1.0
+torch-geometric==2.3.1
+transformers==4.40.0
+numpy>=1.24,<2
+scipy>=1.10,<2
+scikit-learn>=1.2,<2
+pydot==3.0.4
+tqdm>=4.64,<5
+psutil>=5.9,<8

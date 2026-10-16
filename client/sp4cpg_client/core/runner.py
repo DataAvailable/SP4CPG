@@ -145,29 +145,40 @@ class WorkflowRunner:
         tools = Path(__file__).resolve().parents[1] / "tools"
         out = self.out
         data = self.config.data_path
+        source_data = out / "artifacts" / "cpg" / "samples.jsonl" if self.config.run_cpg else data
         hgcn_data = self.config.hgcn_dataset_path
         steps: List[Tuple[str, List[str], str]] = []
 
-        # HGCN graph artifacts. For HGCN prediction, hcpg_dataset.pkl must exist.
+        # Revision data uses explicit incidence and a versioned .pt container.
         if self.config.run_cpg:
-            steps.append(("可选：CPG 图生成", [python, "-u", "cpg_generate.py", "--dataset", self.config.dataset_name], str(pp)))
+            steps.append(("可选：CPG 图生成", [python, "-u", "cpg_generate.py", "--input", str(data),
+                           "--output", str(out / "artifacts" / "cpg")], str(pp)))
         if self.config.run_hcpg:
-            steps.append(("可选：HCPG 图构建", [python, "-u", "hcpg_generate.py"], str(pp)))
+            cpg_graphs = out / "artifacts" / "cpg" / "graphs" if self.config.run_cpg else pp / "dots-cpg"
+            steps.append(("可选：HCPG 图构建", [python, "-u", "hcpg_generate.py", "--input", str(cpg_graphs),
+                           "--output", str(out / "artifacts" / "hcpg"), "--format", "dot"], str(pp)))
         if self.config.run_embedding:
-            steps.append(("可选：HCPG 嵌入生成", [python, "-u", "dot_embedding.py"], str(pp)))
+            hcpg_graphs = out / "artifacts" / "hcpg" if self.config.run_hcpg else pp / "dots-hcpg"
+            embed = [python, "-u", "dot_embedding.py", "--input", str(hcpg_graphs), "--output", str(hgcn_data)]
+            if self.config.run_cpg:
+                embed += ["--labels", str(out / "artifacts" / "cpg" / "labels.json")]
+            steps.append(("可选：HCPG 嵌入生成", embed, str(pp)))
 
-        model_name = self.config.hgcn_model_name.strip() or "HGCN"
-        if model_name not in {"GCN", "GAT", "GIN", "GraphSAGE", "GGNN", "HGCN"}:
-            self._emit_line(f"[client] 无效模型类型 {model_name!r}，已自动切换为 HGCN。")
-            model_name = "HGCN"
+        model_name = self.config.hgcn_model_name.strip() or "TAF-HGCN"
+        if model_name not in {"TAF-HGCN", "HGNN", "GCN", "GAT", "GIN", "GraphSAGE", "GGNN", "HGCN"}:
+            raise ValueError(f"不支持的模型类型：{model_name}")
         checkpoint = self.config.hgcn_checkpoint.strip()
         if self.mode == "train":
-            # Reuse the original SP4CPG training entry; metrics are parsed from logs/train_log_*.txt.
+            if not self.config.hgcn_split_manifest:
+                raise ValueError("训练需要显式样本划分清单；请先运行 scripts/make_split.py 并配置 split manifest")
             steps.append((
                 "HGCN 重新训练与评估",
                 [
                     python, "-u", str(repo / "main.py"),
                     "--model", model_name,
+                    "--data", str(hgcn_data),
+                    "--split", self.config.hgcn_split_manifest,
+                    "--output", str(out / "training"),
                     "--batch", str(self.config.hgcn_batch),
                     "--lr", str(self.config.hgcn_lr),
                     "--dropout", "0.4",
@@ -190,7 +201,9 @@ class WorkflowRunner:
                 "--dropout", "0.4",
             ]
             if self.config.allow_fallback:
-                cmd += ["--allow-fallback", "--fallback-data", str(data)]
+                cmd += ["--allow-fallback", "--fallback-data", str(source_data)]
+            if self.config.run_cpg or source_data.suffix.lower() in {".json", ".jsonl"}:
+                cmd += ["--source-data", str(source_data)]
             steps.append(("HGCN 漏洞检测", cmd, str(repo)))
 
         # MEDE/static analysis stage. If user has a ready result, use it later; if not, run built-in detector.
@@ -204,8 +217,8 @@ class WorkflowRunner:
                 steps.append((
                     "MEDE 静态指针分析",
                     [
-                        python, "-u", str(tools / "MEDE_detector.py"),
-                        "--data", str(data),
+                        python, "-u", str(tools / "svf_detector.py"),
+                        "--data", str(source_data),
                         "--bitcode", self.config.bitcode_path.strip(),
                         "--MEDE-home", self.config.MEDE_home.strip(),
                         "--output", str(out / "static_result.json"),
@@ -299,16 +312,12 @@ class WorkflowRunner:
                         metrics[k] = str(data[k])
             except Exception:
                 pass
-        # Also parse old SP4CPG logs if user enabled graph model training externally.
-        log_dir = self.config.logs_dir
-        if log_dir.exists():
-            logs = sorted(log_dir.glob("train_log_*.txt"), key=lambda p: p.stat().st_mtime, reverse=True)
-            if logs:
-                text = logs[0].read_text(encoding="utf-8", errors="ignore")
-                for key in ["Test Accuracy", "Precision", "Recall", "F1 Score", "AUC"]:
-                    m = re.search(rf"{re.escape(key)}[^0-9nanNAN]*([0-9]+(?:\.[0-9]+)?|nan)", text)
-                    if m:
-                        metrics[key] = m.group(1)
+        summary_path = self.out / "training" / "summary.json"
+        if self.mode == "train" and summary_path.exists():
+            summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            for key, value in summary["evaluation"]["complete_test"].items():
+                if key in {"accuracy", "precision", "recall", "f1", "samples"}:
+                    metrics[key] = str(value)
         self.result.metrics = metrics
 
     def _format_command(self, command: List[str]) -> str:

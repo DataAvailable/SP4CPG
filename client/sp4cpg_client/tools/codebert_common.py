@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import math
 import re
 from pathlib import Path
@@ -11,7 +12,9 @@ from typing import Any, Dict, List, Tuple
 def load_function_dataset(path: Path) -> List[Dict[str, Any]]:
     if not path.exists():
         raise FileNotFoundError(f"Dataset not found: {path}")
-    raw = path.read_text(encoding="utf-8", errors="ignore").strip()
+    raw_bytes = path.read_bytes()
+    fingerprint = hashlib.sha256(raw_bytes).hexdigest()
+    raw = raw_bytes.decode("utf-8-sig").strip()
     if not raw:
         return []
     try:
@@ -41,7 +44,7 @@ def load_function_dataset(path: Path) -> List[Dict[str, Any]]:
         except Exception:
             target = None
         rows.append({
-            "sample_id": item.get("sample_id", item.get("id", i)),
+            "sample_id": str(item.get("sample_id", item.get("id", f"generated:{fingerprint}:{i + 1}"))),
             "function_name": item.get("function_name") or item.get("name") or guess_function_name(code),
             "file": item.get("file") or item.get("path") or "",
             "func": code,

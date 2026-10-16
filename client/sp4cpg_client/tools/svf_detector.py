@@ -54,7 +54,8 @@ def run_real_MEDE(bitcode: str, MEDE_home: str, out_dir: Path) -> List[Dict[str,
     for idx, line in enumerate((proc.stdout or "").splitlines()):
         if re.search(r"warning|error|leak|uaf|use.after.free|null|overflow|bug|vuln", line, re.I):
             alerts.append({
-                "sample_id": idx,
+                "sample_id": None,
+                "mapping": "unresolved_warning_line_not_sample_id",
                 "function_name": "unknown_function",
                 "severity": "medium",
                 "category": "MEDE_output_signal",

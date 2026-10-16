@@ -20,13 +20,14 @@ class ClientConfig:
 
     # HGCN settings
     task_mode: str = "predict"  # train | predict | full
-    hgcn_model_name: str = "HGCN"
+    hgcn_model_name: str = "TAF-HGCN"
     hgcn_checkpoint: str = ""
-    hgcn_epochs: int = 400
-    hgcn_batch: int = 128
+    hgcn_epochs: int = 500
+    hgcn_batch: int = 64
     hgcn_lr: float = 1e-4
     hgcn_patience: int = 100
-    allow_fallback: bool = True
+    allow_fallback: bool = False
+    hgcn_split_manifest: str = ""
 
     # Optional graph artifacts from original SP4CPG pipeline
     run_cpg: bool = False
@@ -63,11 +64,11 @@ class ClientConfig:
 
     @property
     def hgcn_dataset_path(self) -> Path:
-        """HGCN uses the embedded HCPG dataset. If dataset_name is a .pkl path, use it directly; otherwise use preprocess/hcpg_dataset.pkl."""
+        """Use explicit embedded input, or the revision's default versioned dataset."""
         p = self.data_path
         if p.suffix.lower() in {".pkl", ".pt", ".pth"}:
             return p
-        return self.preprocess_dir / "hcpg_dataset.pkl"
+        return self.preprocess_dir / "hcpg_dataset.pt"
 
     @property
     def logs_dir(self) -> Path:
@@ -98,8 +99,8 @@ def load_config() -> ClientConfig:
         for old_key, new_key in alias.items():
             if old_key in data and new_key not in data:
                 data[new_key] = data[old_key]
-        if data.get("hgcn_model_name") not in {"GCN", "GAT", "GIN", "GraphSAGE", "GGNN", "HGCN"}:
-            data["hgcn_model_name"] = "HGCN"
+        if data.get("hgcn_model_name") not in {"TAF-HGCN", "HGNN", "GCN", "GAT", "GIN", "GraphSAGE", "GGNN", "HGCN"}:
+            data["hgcn_model_name"] = "TAF-HGCN"
         allowed = {field.name for field in ClientConfig.__dataclass_fields__.values()}
         return ClientConfig(**{k: v for k, v in data.items() if k in allowed})
     except Exception:

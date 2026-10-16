@@ -1,229 +1,155 @@
-## SP4CPG
+# SP4CPG
 
-A novel vulnerability detection framework with two components: (1) hyper code property graph (HCPG) construction, which reduces redundancy through semantics-preserving graph pruning and hyperedge creation; and (2) the type-aware flow-sensitive hypergraph convolutional network (TAF-HGCN), which combines node type-aware embeddings with flow-sensitive hyperedge learning to model high-order semantic relationships.
+SP4CPG combines a **Hyper Code Property Graph (HCPG)** representation with a
+**type-aware flow-sensitive hypergraph convolutional network (TAF-HGCN)** for
+function-level C/C++ vulnerability classification.
 
-## 🚀 Features
+HCPG construction is **dependency-preserving under the applicable pruning
+preconditions**: the claim concerns CFG/DDG information encoded in the input
+CPG for represented program elements. It does not establish full program
+behavioral equivalence or recover dependencies absent from Joern's output.
+Construction runs independently on each exported function graph.
 
-- **Hyper Code Property Graph Generation**: Automated HCPG generation
-- **Advanced Graph Pruning**: Intelligent semantics-preserving graph pruning
-- **High-order Representation**: Control and Data hyperedges generation
+This revision synchronizes the public implementation with the revised paper's
+construction, directed/type-aware model, and evaluation protocols. Historical
+unversioned datasets and weights are not interchangeable with the new schema.
+See [revision mapping](docs/REVISION_MAPPING.md), [graph schema](docs/GRAPH_SCHEMA.md),
+and [reproducibility and result provenance](docs/REPRODUCIBILITY.md).
 
-## 📋 Requirements
+## Install
 
-### System Dependencies
-- Python 3.8+
-- CUDA-compatible GPU (optional but recommended)
-- [Joern](https://joern.io/) - Static analysis platform for code property graphs
+Use Python 3.10 in a dedicated environment. The reference dependencies record
+the paper's torch 2.1.0, torch_geometric 2.3.1 and transformers 4.40.0. Install
+the appropriate PyTorch build for your CPU/CUDA environment before resolving
+the remaining requirements.
 
-### Python Dependencies
 ```bash
-pip install torch torchvision torchaudio
-pip install torch-geometric
-pip install transformers
-pip install scikit-learn
-pip install tensorboard
-pip install tqdm
-pip install tabulate
-pip install pydot
-pip install numpy
-```
-
-## 🏗️ Project Structure
-
-```
-├── main.py                     # Main training and evaluation script
-├── models/
-│   ├── gnn_models.py          # Standard GNN model implementations
-│   └── hgnn_models.py         # Hypergraph neural network models
-├── preprocess/
-│   ├── cpg_generate.py        # CPG generation from source code
-│   ├── hcpg_generate.py       # HCPG generation from CPG
-│   ├── dot_embedding.py       # Dataset creation and graph preprocessing
-│   ├── parse_dot.py           # DOT file parsing and feature extraction
-│   ├── dots-cpg/              # Generated CPG DOT files
-│   ├── dots-cpg/              # Generated HCPG DOT files
-│   ├── source/                # Source code files
-│   ├── workspace/             # Joern workspace
-├── logs/                      # Training logs and outputs
-├── joern-cli/                 # Joern source
-└── data/
-    └── function.json          # Input dataset (code functions with labels)
-```
-
-## 🛠️ Installation & Setup
-
-### 1. Clone the Repository
-```bash
-git clone <https://github.com/DataAvailable/SP4CPG>
+git clone https://github.com/DataAvailable/SP4CPG.git
 cd SP4CPG
+python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
+python -m pytest -q
 ```
 
-### 2. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
+Install [Joern](https://docs.joern.io/installation/) separately for source-to-CPG
+export. Graph construction/validation from existing DOT/JSON needs no Joern
+process. Encoding needs a CodeBERT checkpoint; supply a pinned model/tokenizer
+revision, or use a local checkpoint with `--local-files-only`.
 
-### 3. Install Joern
-Follow the [Joern installation guide](https://docs.joern.io/installation/) to install Joern for CPG generation.
+## Prepare graphs
 
-### 4. Prepare Dataset
-Place your dataset in JSON format at `data/function.json` with the following structure:
+Supply JSON or JSONL records with `sample_id`, `func` and binary `target` (or
+`label`). Keep the same stable IDs throughout export, construction and learning.
+Inputs lacking IDs receive explicitly marked generated IDs; those are a new
+dataset mapping, not recovered historical experiment IDs.
+
 ```json
-[
-    {
-        "func": "int vulnerable_function() { ... }",
-        "target": 1
-    },
-    {
-        "func": "int safe_function() { ... }",
-        "target": 0
-    }
-]
+[{"sample_id": "project:commit:function", "func": "int f(void) { return 0; }", "target": 0}]
 ```
 
-## 🔧 Usage
+From the repository root:
 
-### Step 1: Generate Code Property Graphs
 ```bash
-cd preprocess
-python cpg_generate.py
+python preprocess/cpg_generate.py --input data/functions.json --output runs/export
+python preprocess/hcpg_generate.py --input runs/export/graphs --output runs/hcpg
+python scripts/validate_dependencies.py --original runs/export/graphs --transformed runs/hcpg --output runs/dependency_checks.json
+python scripts/graph_statistics.py --input runs/hcpg --output runs/hcpg_statistics.json
 ```
-This will:
-- Parse the JSON dataset
-- Generate C source files
-- Use Joern to create CPGs
-- Output CPG DOT files to `preprocess/dots-cpg/`
 
-### Step 2: Create HCPG Dataset
+The exporter records commands, source hashes, chosen method DOT and failures.
+If several non-global methods remain, select one explicitly with `--method-dot`
+or `--method-map`; the exporter does not silently choose the first method.
+Parallel wrappers use the same construction/export cores as their serial entrypoints.
+Construction defaults to lossless schema-v2 JSON; use `--format dot` for DOT
+interchange with embedded dictionary/binding metadata.
+
+**Pruning is conservative.** Ordinary Joern DOT often lacks the facts needed to
+justify deleting output calls or merging declarations. Unresolved candidates
+remain. Add only program-analysis-derived safety/identity facts described in
+[the schema](docs/GRAPH_SCHEMA.md); never derive them from vulnerability labels.
+This policy does not imply the historical graph-reduction percentages will be
+reproduced on newly imported, less richly annotated graphs.
+
+## Embed and fix a shared split
+
+Run the same node-input construction and CodeBERT revision for both graph forms:
+
 ```bash
-cd preprocess
-python hcpg_generate.py
+python preprocess/dot_embedding.py --input runs/export/graphs --representation CPG --labels runs/export/labels.json --revision MODEL_COMMIT --output runs/cpg.pt
+python preprocess/dot_embedding.py --input runs/hcpg --representation HCPG --labels runs/export/labels.json --revision MODEL_COMMIT --output runs/hcpg.pt
+python scripts/make_split.py --data runs/cpg.pt --output runs/split.json --seed 2025
+python scripts/make_split.py --data runs/hcpg.pt --output runs/split.json --validate-only
 ```
-This will:
-- Parse DOT files
-- Apply node pruning strategies
-- Generate control and data hyperedges
-- Output HCPG DOT files to `preprocess/dots-hcpg/`
 
-### Step 3: HCPG Embedding
+`MODEL_COMMIT` must be replaced with the actual checkpoint revision. The split
+command creates a **new** 8:1:1 split. To reproduce a historical run, supply its
+actual ID manifest instead. Label, ID or original-CPG-size differences invalidate
+the shared manifest. Parse/encoding failures are reported; the default fails the
+run rather than converting failed graphs to ordinary empty samples.
+
+## Train and evaluate
+
 ```bash
-cd preprocess
-python dot_embedding.py
+python main.py --config configs/paper.json --model TAF-HGCN --data runs/hcpg.pt --split runs/split.json --output runs/taf_hcpg_2025
+python scripts/run_matched.py --cpg-data runs/cpg.pt --hcpg-data runs/hcpg.pt --split runs/split.json --output runs/matched
 ```
-This will:
-- Save the embedding vectors as `hcpg_dataset.pkl`
 
-### Step 4: Train Models
+`run_matched.py` runs CPG/HCPG × HGNN/TAF-HGCN for training seeds 2025, 2026,
+2027. All configurations reuse the same split and test records. HGNN is the
+standard normalized **undirected**, unit-weight encoder without node/relation
+type embeddings; each input relation has its own incidence column, even when
+memberships coincide. It creates no feature-based hyperedges.
+
+TAF-HGCN uses source/target incidence, learned six-kind relation weights and
+17 node-kind embeddings. Each layer averages 1…K propagation steps, independently
+of trainable layer count, with no extra zero-hop/residual channel and mean graph
+pooling. Use `--ablation no-tae` or `--ablation no-fshr` to remove type-aware
+learning or use unordered incidence on the **same** HCPG, respectively.
+
+Every run saves configuration, dataset/split fingerprints, the best checkpoint,
+per-epoch validation metrics, per-sample predictions and a structured summary.
+Evaluation includes the complete test set, the subset with **more than 500
+original CPG nodes**, and size bins. Means aggregate each seed's P/R/F1 separately.
+Existing output directories are not silently overwritten.
+
+The registry also retains `GCN`, `GAT`, `GIN`, `GraphSAGE`, `GGNN`, and explicit
+legacy architecture `HGCN`. Binary GNNs receive witnessed binary node-to-node
+edges; the hypergraph models receive independent node/relation incidence indices.
+These generic GNN implementations are not reimplementations of the paper's six
+named external vulnerability detectors.
+The existing GCN/GAT/GIN/GraphSAGE implementations are fixed at two layers;
+pass `--layers 2` when selecting them.
+
+## Other revision experiments
+
 ```bash
-# Train with GCN
-python main.py --model GCN --batch 128 --lr 1e-4 --dropout 0.4 --epoch 500
-
-# Train with GAT
-python main.py --model GAT --batch 64 --lr 5e-5 --dropout 0.3 --epoch 300
-
-# Train with GGNN
-python main.py --model GGNN --batch 128 --lr 1e-4 --dropout 0.4 --epoch 500
-
-# Train with Hypergraph GCN
-python main.py --model HGCN --batch 64 --lr 1e-4 --dropout 0.5 --epoch 400
+python scripts/representation_consistency.py --cpg-data runs/cpg.pt --hcpg-data runs/hcpg.pt --split runs/split.json --output runs/consistency.json
+python scripts/llm_evaluation.py --help
 ```
 
-### Command Line Arguments
-- `--model`: Model architecture (GCN, GAT, GIN, GraphSAGE, GGNN, HGCN)
-- `--batch`: Batch size (default: 128)
-- `--lr`: Learning rate (default: 1e-4)
-- `--weight_decay`: Weight decay for optimization (default: 1e-5)
-- `--dropout`: Dropout rate (default: 0.4)
-- `--epoch`: Maximum number of epochs (default: 500)
-- `--patience`: Early stopping patience (default: 100)
+RQ6 compares mean-pooled CodeBERT node features by cosine similarity, without
+TAF-HGCN propagation or classifier outputs. It measures representational
+consistency, not dependency correctness. RQ7 is the separate direct dependency
+checker. The LLM workflow prepares the exact Appendix-B two-shot prompts with
+temperature 0 and imports one response per function/model on common eligible
+test IDs; [protocol details](docs/REPRODUCIBILITY.md#llm-comparison) describe
+provider versioning, token budgets and error handling.
 
-## 🧠 Model Architectures
+## Results and limits
 
-### Standard GNN Models
-- **GCN**: Graph Convolutional Network
-- **GAT**: Graph Attention Network with multi-head attention
-- **GIN**: Graph Isomorphism Network
-- **GraphSAGE**: GraphSAGE with sampling
-- **GGNN**: Gated Graph Neural Network
+[Paper-reported results](results/paper_reported.json) are reference summaries
+with explicit provenance. This code update does not independently reproduce
+the paper's full-corpus scores, 54,142 graph-pair checks or efficiency claims.
+No historical simulated layout counts are used as measured results or test
+expectations. Fresh measurements belong in separate run directories.
 
-### Hypergraph Models
-- **TAF-HGCN**: Hypergraph Convolutional Network with advanced features:
-  - Multi-scale pooling (mean + max)
-  - Residual connections
-  - Layer normalization
-  - Edge dropout regularization
+Full historical reproduction needs original split IDs, graph pairs, checkpoint
+and encoding details, and per-run logs/predictions. Multi-hop/depth statistics
+must be checked with this implementation's explicit conventions.
 
-## 📊 Graph Preprocessing
+The Windows client uses the same model factory and checkpoint metadata. Choose
+the versioned `.pt` dataset; training additionally requires the split JSON.
+Legacy raw weights/unversioned datasets require rebuilding/retraining, and demo
+fallbacks never produce model-comparison metrics. See [client migration](docs/REPRODUCIBILITY.md#client-migration).
 
-The framework implements sophisticated graph preprocessing strategies:
-
-### 1. Intermediate Node Pruning
-- Removes redundant assignment nodes
-- Eliminates print statement nodes
-- Reconnects parent-child relationships
-
-### 2. Leaf Node Processing
-- Removes LITERAL and IDENTIFIER leaf nodes
-- Merges nodes with identical data types (LOCAL, PARAM)
-- Consolidates duplicate TYPE_REF and METHOD_RETURN nodes
-
-### 3. Control Hyperedge Generation
-- Merge homogeneous control dependencies to get control hyperedges.
-
-### 4. Data Hyperedge Generation
-- Merge homogeneous data dependencies to get data hyperedges.
-
-### 5. Feature Engineering
-- Flow-sensitive hypergraph learning
-- Type-aware embeddings
-- Multi-modal feature fusion
-
-## 📋 Output and Logging
-
-### TensorBoard Visualization
-```bash
-tensorboard --logdir=logs
-```
-
-### Log Files
-Training logs are saved in `logs/train_log_YYYY-MM-DD_HH-MM.txt` containing:
-- Device information
-- Hyperparameter settings
-- Epoch-wise training metrics
-- Final evaluation results
-
-### Model Checkpoints
-Best models are saved as `logs/{MODEL}_{LR}_{DROPOUT}_best_model.pt`
-
-## 🔍 Example Results
-
-```
-========== Evaluation Results ==========
-┌─────────────────────────────┬─────────┐
-│ Metric                      │ Value   │
-├─────────────────────────────┼─────────┤
-│ Test Accuracy               │ 0.8542  │
-│ Precision                   │ 0.8234  │
-│ Recall                      │ 0.8765  │
-│ F1 Score                    │ 0.8491  │
-│ False Positive Rate (FPR)   │ 0.1456  │
-│ False Negative Rate (FNR)   │ 0.1235  │
-│ AUC                         │ 0.9123  │
-│ Test Evaluation Time (s)    │ 2.34    │
-└─────────────────────────────┴─────────┘
-```
-
-## 🚨 Important Notes
-
-### Memory Considerations
-- **Browser Storage Limitation**: The framework avoids localStorage/sessionStorage APIs for compatibility
-- **GPU Memory**: Large graphs may require batch size adjustment for GPU memory constraints
-
-### Dataset Requirements
-- Input code should be valid C/C++ functions
-- Labels should be binary (0 for safe, 1 for vulnerable)
-- Minimum dataset size: 1000+ samples recommended
-
-## 📚 Citation
-
-If you use this framework in your research, please cite.
+The project is distributed under the [MIT license](LICENSE).

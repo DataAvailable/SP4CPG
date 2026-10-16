@@ -1,0 +1,58 @@
+{
+  "result_kind": "paper_reported_reference_summary",
+  "source": "SP4CPG_OOPSLA_final_clean.tex, final revision package",
+  "manuscript_sha256": "09da71c18f32b89c3365eda5666ff1e7ddc7eca627583eac3be20e47c1e8bd1d",
+  "independently_rerun_for_this_code_update": false,
+  "raw_historical_split_manifests_supplied": false,
+  "raw_historical_graph_pairs_supplied": false,
+  "per_seed_predictions_supplied": false,
+  "historical_simulated_layout_counts_used": false,
+  "units": "P/R/F1 and cosine similarities below are percentages; gains are percentage points",
+  "datasets": {
+    "D1": "FFmpeg+Qemu",
+    "D2": "Chrome+Debian",
+    "D3": "Big-Vul",
+    "D4": "PrimeVul"
+  },
+  "complete_test_sp4cpg_f1": {"D1": 71.8, "D2": 59.4, "D3": 60.9, "D4": 82.1},
+  "controlled_comparison": {
+    "scope": "identical test records with more than 500 ORIGINAL CPG nodes within each dataset",
+    "training_seeds": [2025, 2026, 2027],
+    "aggregation": "separate means of per-run precision, recall and F1",
+    "metric_order": ["precision", "recall", "f1"],
+    "configurations": {
+      "HGNN_CPG": {"D1": [43.4, 50.3, 46.6], "D2": [36.9, 41.4, 39.0], "D3": [41.0, 37.2, 39.0], "D4": [59.8, 61.2, 60.5]},
+      "HGNN_HCPG": {"D1": [58.4, 71.3, 64.2], "D2": [51.2, 56.6, 53.8], "D3": [54.3, 50.6, 52.4], "D4": [76.2, 76.6, 76.4]},
+      "TAF_HGCN_CPG": {"D1": [45.2, 52.3, 48.5], "D2": [38.2, 42.8, 40.4], "D3": [42.9, 38.9, 40.8], "D4": [62.1, 63.5, 62.8]},
+      "TAF_HGCN_HCPG": {"D1": [61.3, 74.9, 67.4], "D2": [53.2, 58.9, 55.9], "D3": [57.6, 53.6, 55.5], "D4": [79.7, 80.0, 79.8]}
+    },
+    "standard_deviations": null
+  },
+  "rq6_mean_cosine_similarity_percent": {"D1": 97.75, "D2": 98.98, "D3": 98.10, "D4": 98.45},
+  "rq7": {
+    "scope": "complete test sets; previous unresolved-pair exclusions superseded",
+    "total_pairs": 54142,
+    "exact_pairs": 54142,
+    "datasets": {
+      "D1": {"pairs": 2236, "exact_pairs": 2236},
+      "D2": {"pairs": 1817, "exact_pairs": 1817},
+      "D3": {"pairs": 26492, "exact_pairs": 26492},
+      "D4": {"pairs": 23597, "exact_pairs": 23597}
+    },
+    "reported_cfg_ddg_micro_precision_recall_percent": [100.0, 100.0],
+    "reported_fp_fn": [0, 0],
+    "reported_cfg_ddg_reachability_difference_graphs": [0, 0],
+    "raw_tp_counts": null
+  },
+  "reported_average_hcpg_reductions_percent": {"nodes": 37.2, "relations": 42.6, "depth": 35.8},
+  "reported_combined_system_reductions_vs_six_baselines_percent": {"training_time": 19.9, "testing_time": 14.9, "vram": 31.9},
+  "llm_selected_two_shot_comparison": {
+    "scope": "common eligible PrimeVul test functions under selected function-text prompting configurations",
+    "sp4cpg_f1": 79.83,
+    "strongest_selected_llm_f1": 77.00,
+    "f1_gain_percentage_points": 2.83,
+    "claim_extends_to_adapted_or_graph_conditioned_llms": false
+  },
+  "unseen_cwe_reported_summary": {"samples": 1606, "detected": 1214, "recall_percent": 75.6},
+  "temporal_evaluation": {"training_disclosure_cutoff": "2020-05-01", "interpretation": "retrospective later-disclosed CVEs, not unknown zero-day discovery"}
+}

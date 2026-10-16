@@ -246,6 +246,11 @@ class MainWindow(QMainWindow):
             cg.addWidget(QLabel(label), 3, col, Qt.AlignLeft)
             cg.addWidget(widget, 4, col)
         cg.addWidget(self.fallback_cb, 5, 0, 1, 4)
+        self.split_edit = QLineEdit()
+        cg.addWidget(QLabel("训练划分清单 JSON"), 6, 0)
+        cg.addWidget(self.split_edit, 6, 1, 1, 2)
+        cg.addWidget(self._browse_btn(self.split_edit, False), 6, 3)
+        self.model_edit.setPlaceholderText("TAF-HGCN / HGNN / HGCN / GCN / GAT / GIN / GraphSAGE / GGNN")
         layout.addWidget(cbox)
 
         sbox = QGroupBox("MEDE 静态指针分析")
@@ -356,6 +361,7 @@ class MainWindow(QMainWindow):
         mode_map = {"full": 0, "predict": 1, "train": 2}
         self.mode_combo.setCurrentIndex(mode_map.get(c.task_mode, 0))
         self.model_edit.setText(c.hgcn_model_name); self.ckpt_edit.setText(c.hgcn_checkpoint)
+        self.split_edit.setText(c.hgcn_split_manifest)
         self.epochs_spin.setValue(c.hgcn_epochs); self.batch_spin.setValue(c.hgcn_batch); self.lr_spin.setValue(c.hgcn_lr); self.maxlen_spin.setValue(c.hgcn_patience)
         self.fallback_cb.setChecked(c.allow_fallback)
         self.enable_MEDE_cb.setChecked(c.enable_MEDE); self.MEDE_home_edit.setText(c.MEDE_home); self.bc_edit.setText(c.bitcode_path); self.MEDE_cmd_edit.setText(c.MEDE_command); self.static_edit.setText(c.static_result_path)
@@ -370,6 +376,7 @@ class MainWindow(QMainWindow):
             dataset_name=self.dataset_edit.text().strip() or "function.json", output_dir=self.out_edit.text().strip(),
             task_mode=mode, hgcn_model_name=self.model_edit.text().strip() or "HGCN",
             hgcn_checkpoint=self.ckpt_edit.text().strip(), hgcn_epochs=self.epochs_spin.value(),
+            hgcn_split_manifest=self.split_edit.text().strip(),
             hgcn_batch=self.batch_spin.value(), hgcn_lr=self.lr_spin.value(), hgcn_patience=self.maxlen_spin.value(),
             allow_fallback=self.fallback_cb.isChecked(), run_cpg=self.run_cpg_cb.isChecked(), run_hcpg=self.run_hcpg_cb.isChecked(), run_embedding=self.run_embed_cb.isChecked(),
             enable_MEDE=self.enable_MEDE_cb.isChecked(), MEDE_home=self.MEDE_home_edit.text().strip(), bitcode_path=self.bc_edit.text().strip(), MEDE_command=self.MEDE_cmd_edit.text().strip(), static_result_path=self.static_edit.text().strip(),
@@ -407,6 +414,8 @@ class MainWindow(QMainWindow):
         if not c.data_path.exists(): problems.append(f"数据集不存在：{c.data_path}")
         if c.task_mode in {"predict", "full"} and not c.hgcn_checkpoint and not c.allow_fallback:
             problems.append("未提供 HGCN checkpoint，且 fallback 未启用")
+        if c.task_mode == "train" and not Path(c.hgcn_split_manifest).is_file():
+            problems.append("训练需要有效的样本划分清单 JSON")
         if c.enable_MEDE and not (c.MEDE_command or c.static_result_path or c.bitcode_path or c.allow_fallback):
             problems.append("MEDE 未配置 bitcode/命令/已有结果，且 fallback 未启用")
         if c.run_cpg and not (c.preprocess_dir / "cpg_generate.py").exists(): problems.append("启用 CPG 但缺少 preprocess/cpg_generate.py")

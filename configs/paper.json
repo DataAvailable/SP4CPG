@@ -1,0 +1,13 @@
+{
+  "model": "TAF-HGCN",
+  "batch": 64,
+  "lr": 0.0001,
+  "dropout": 0.4,
+  "epoch": 500,
+  "patience": 100,
+  "layers": 3,
+  "hidden": 512,
+  "hop_size": 3,
+  "seed": 2025,
+  "notes": "Manuscript settings. Type embedding width=64, weight_decay=1e-5 and validation-accuracy selection are explicit current implementation choices/legacy defaults; their historical values are not established by the manuscript. No historical split is bundled."
+}
