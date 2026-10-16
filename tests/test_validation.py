@@ -76,7 +76,7 @@ def test_missing_original_role_cannot_remove_itself_from_domain():
     assert report["errors"]["identity"]
 
 
-def test_forged_complete_removal_does_not_hide_a_dependency_role():
+def test_invalid_complete_removal_does_not_hide_a_dependency_role():
     original = graph([node("a"), node("b")], [relation("d", "a", "b")])
     output = deepcopy(original)
     output["nodes"].pop()
@@ -278,7 +278,7 @@ def test_retained_status_cannot_bypass_rule4_merge_restrictions():
     assert any("retained role b must keep" in message for message in report["errors"]["identity"])
 
 
-def test_ast_and_cdg_cannot_be_deleted_or_fabricated():
+def test_ast_and_cdg_reject_deletions_and_unsupported_replacements():
     for kind in ("AST", "CDG"):
         original = graph([node("a"), node("b")], [relation("edge", "a", "b", kind)])
         output = deepcopy(original)

@@ -1,4 +1,4 @@
-"""Cross-module regression tests; fixtures are synthetic and never paper results."""
+"""Cross-module regression tests; fixtures are in-memory test graphs, separate from paper results."""
 import importlib
 import json
 from pathlib import Path
@@ -45,7 +45,7 @@ def test_matched_cli_runs_all_four_configurations_on_identical_ids(tmp_path):
         for sample in copied:
             sample.representation = representation
         torch.save({"schema_version": 2, "representation": representation, "samples": copied,
-                    "metadata": {"encoder": {"fixture": "synthetic features only"}}}, tmp_path / (representation + ".pt"))
+                    "metadata": {"encoder": {"fixture": "in-memory test features only"}}}, tmp_path / (representation + ".pt"))
     split = tmp_path / "split.json"
     split.write_text(json.dumps(make_split(sample_records(samples), 3)), encoding="utf-8")
     config = tmp_path / "config.json"

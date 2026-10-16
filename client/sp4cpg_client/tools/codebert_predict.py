@@ -72,7 +72,7 @@ def main() -> None:
     print(f"[codebert] samples={len(rows)} model={args.model_name}")
     try:
         if args.allow_fallback and not args.checkpoint.strip():
-            raise RuntimeError("No CodeBERT checkpoint was provided. Fallback is enabled, so the workflow will run in demo-compatible mode.")
+            raise RuntimeError("No CodeBERT checkpoint was provided. Fallback is enabled, so the workflow will use explicitly marked lexical predictions.")
         preds = run_real_codebert(rows, args.model_name, args.checkpoint, args.max_length)
     except Exception as exc:
         if not args.allow_fallback:

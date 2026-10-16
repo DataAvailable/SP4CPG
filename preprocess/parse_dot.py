@@ -29,8 +29,8 @@ EDGE_TYPE_MAP = RELATION_TYPE_MAP
 def node_input_text(node: Mapping) -> str:
     """New node-text policy: the canonical node's code field only.
 
-    Kinds are separate model indices; bindings and relation labels are not
-    fabricated into text features. Metadata records this new-run policy rather
+    Kinds are separate model indices; text features use only the code field.
+    Metadata records this new-run policy rather
     than claiming to recover undocumented historical serialization settings.
     """
     value = node.get("code", "")

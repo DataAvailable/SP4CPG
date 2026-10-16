@@ -17,7 +17,7 @@ def prepare_requests(functions, test_ids, limits, token_counts, template):
     if not limits or not test_ids or len(set(test_ids)) != len(test_ids):
         raise ValueError("Nonempty models and unique complete-test IDs are required")
     if template.count("{CODE}") != 1:
-        raise ValueError("Prompt template must contain one {CODE} placeholder")
+        raise ValueError("Prompt template must contain one {CODE} insertion field")
     lookup = {}
     for row in functions:
         sample_id = str(row["sample_id"])

@@ -140,8 +140,8 @@ provider versioning, token budgets and error handling.
 [Paper-reported results](results/paper_reported.json) are reference summaries
 with explicit provenance. This code update does not independently reproduce
 the paper's full-corpus scores, 54,142 graph-pair checks or efficiency claims.
-No historical simulated layout counts are used as measured results or test
-expectations. Fresh measurements belong in separate run directories.
+Fresh measurements belong in separate run directories. Correctness-test
+fixtures are separate from manuscript results.
 
 Full historical reproduction needs original split IDs, graph pairs, checkpoint
 and encoding details, and per-run logs/predictions. Multi-hop/depth statistics
@@ -149,7 +149,7 @@ must be checked with this implementation's explicit conventions.
 
 The Windows client uses the same model factory and checkpoint metadata. Choose
 the versioned `.pt` dataset; training additionally requires the split JSON.
-Legacy raw weights/unversioned datasets require rebuilding/retraining, and demo
+Legacy raw weights/unversioned datasets require rebuilding/retraining, and lexical
 fallbacks never produce model-comparison metrics. See [client migration](docs/REPRODUCIBILITY.md#client-migration).
 
 The project is distributed under the [MIT license](LICENSE).

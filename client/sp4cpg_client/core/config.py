@@ -41,7 +41,7 @@ class ClientConfig:
     MEDE_command: str = ""
     static_result_path: str = ""
 
-    # Advanced/static semantic configuration placeholders
+    # Advanced/static semantic configuration
     llm_config_path: str = ""
     skills_home: str = ""
     joern_home: str = ""

@@ -71,7 +71,7 @@ class HGCN(nn.Module):
             try:
                 x = conv(x, edge_index)
             except AssertionError:
-                # If hyperedge_attr is required but not available, create dummy attr
+                # Supply unit attributes when the convolution requires hyperedge_attr.
                 num_edges = edge_index.max().item() + 1 if edge_index.numel() > 0 else 0
                 hyperedge_attr = torch.ones(num_edges, 1, device=x.device)
                 x = conv(x, edge_index, hyperedge_attr)

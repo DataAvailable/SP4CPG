@@ -16,7 +16,7 @@ def build_model(model_name: str, repo: Path, model_config: Dict[str, Any]):
 
 def compute_metrics(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
     if any(str(r.get("detector", "")).startswith("fallback") for r in rows):
-        return {"mode": "demo_fallback_not_model_evaluation", "samples": len(rows)}
+        return {"mode": "lexical_fallback_not_model_evaluation", "samples": len(rows)}
     labeled = [r for r in rows if r.get("true_label") is not None and str(r.get("true_label")) != ""]
     if not labeled:
         return {"mode": "prediction_only", "samples": len(rows)}
@@ -162,7 +162,7 @@ def main():
     parser.add_argument("--metrics", default="", help="Optional metrics JSON path")
     parser.add_argument("--batch", type=int, default=128)
     parser.add_argument("--dropout", type=float, default=0.4)
-    parser.add_argument("--allow-fallback", action="store_true", help="Only for UI demo compatibility; marks detector as fallback_lexical_not_hgcn")
+    parser.add_argument("--allow-fallback", action="store_true", help="Enable explicitly marked lexical fallback; excluded from model evaluation")
     parser.add_argument("--fallback-data", default="", help="Raw JSON/JSONL dataset for fallback mode")
     parser.add_argument("--source-data", default="", help="Optional stable-ID source records for function/file metadata")
     args = parser.parse_args()

@@ -106,9 +106,9 @@ def test_cpu_training_checkpoint_and_eval_round_trip(tmp_path):
                                  node_types=torch.tensor([11, 11]), num_nodes=2, num_hyperedges=1,
                                  sample_id=str(i), original_node_count=600 if i % 2 else 2,
                                  schema_version=2, representation="HCPG", y=torch.tensor([i % 2])))
-    data = tmp_path / "synthetic.pt"
+    data = tmp_path / "test_graphs.pt"
     torch.save({"schema_version": 2, "representation": "HCPG", "samples": samples,
-                "metadata": {"encoder": {"source": "synthetic test fixture, not paper data"}}}, data)
+                "metadata": {"encoder": {"source": "in-memory correctness-test graphs, separate from paper data"}}}, data)
     split = tmp_path / "split.json"
     split.write_text(json.dumps(make_split(sample_records(samples), 2025)), encoding="utf-8")
     common = ["--data", str(data), "--split", str(split), "--device", "cpu", "--epoch", "2",
@@ -127,13 +127,13 @@ def test_cpu_training_checkpoint_and_eval_round_trip(tmp_path):
             inferred = run_real_hgcn(inference_args)
             assert [row["sample_id"] for row in inferred] == [str(i) for i in range(12)]
             assert all(row["detector"] == "TAF-HGCN" for row in inferred)
-            assert compute_metrics([{**inferred[0], "detector": "fallback_lexical_not_hgcn"}])["mode"] == "demo_fallback_not_model_evaluation"
+            assert compute_metrics([{**inferred[0], "detector": "fallback_lexical_not_hgcn"}])["mode"] == "lexical_fallback_not_model_evaluation"
             unlabelled = [s.clone() for s in samples]
             for sample in unlabelled:
                 del sample.y
             unlabelled_path = tmp_path / "unlabelled.pt"
             torch.save({"schema_version": 2, "representation": "HCPG", "samples": unlabelled,
-                        "metadata": {"encoder": {"source": "synthetic test fixture, not paper data"}}}, unlabelled_path)
+                        "metadata": {"encoder": {"source": "in-memory correctness-test graphs, separate from paper data"}}}, unlabelled_path)
             inference_args.data = str(unlabelled_path)
             assert all(row["true_label"] is None for row in run_real_hgcn(inference_args))
         evaluated = run(parse_args(common + ["--model", model, "--output", str(tmp_path / (model + "-eval")),

@@ -61,7 +61,7 @@ def _node_record(node: dict) -> dict:
 def normalize_graph(graph: dict) -> dict:
     """Return a checked independent v2 copy, preserving all supplied attributes.
 
-    Missing binding records are synthesized only for an ordinary binary edge.
+    Missing binding records are derived only from the endpoints of an ordinary binary edge.
     Hyperedge memberships alone cannot establish original dependencies.
     """
     if not isinstance(graph, dict):

@@ -17,7 +17,7 @@ def method_dot(name="target", external=False):
             '"1" -> "2" [label="AST"];\n}')
 
 
-class FakeJoern:
+class JoernCommandFixture:
     def __init__(self, exports=None):
         self.calls = []
         self.exports = exports or {"0-cpg.dot": method_dot()}
@@ -49,7 +49,7 @@ class FakeJoern:
 def export(tmp_path, monkeypatch, rows, *, exports=None, **options):
     dataset = tmp_path / "arbitrary-dataset-name.json"
     dataset.write_text(json.dumps(rows, ensure_ascii=False), encoding="utf-8")
-    joern = FakeJoern(exports)
+    joern = JoernCommandFixture(exports)
     monkeypatch.setattr(cpg_generate.subprocess, "run", joern)
     result = cpg_generate.run_export(
         dataset, output_root=tmp_path / "output", source_root=tmp_path / "source",
@@ -142,7 +142,7 @@ def test_jsonl_failures_filters_and_generated_ids_do_not_shift_labels(tmp_path, 
     dataset.write_text('\n'.join([json.dumps({"id": "skip", "func": "a()", "target": 1}),
                                   "{broken", json.dumps({"func": "b()", "target": 0}),
                                   json.dumps({"id": "last", "func": "c()", "target": 0})]), encoding="utf-8")
-    joern = FakeJoern()
+    joern = JoernCommandFixture()
     monkeypatch.setattr(cpg_generate.subprocess, "run", joern)
     result = cpg_generate.run_export(dataset, output_root=tmp_path / "output",
                                     source_root=tmp_path / "source", workspace_root=tmp_path / "workspace",

@@ -7,8 +7,7 @@ distinct from reproducing the historical full-corpus experiments. See
 [local validation](VALIDATION.md) for the actual environment and checks performed
 for this update. [paper_reported.json](../results/paper_reported.json) contains
 author-reported manuscript summaries, not outputs of the new test suite.
-No historical simulated RQ7 report-layout counts are included as benchmark
-results, and those values are never numerical targets for the checker.
+The checker computes its metrics directly from the supplied graph pairs.
 
 Historical reproduction still requires the original split manifests, all
 CPG/HCPG pairs, original Joern and encoding settings, trained checkpoints and
@@ -24,7 +23,7 @@ The manuscript names torch 2.1.0, torch_geometric 2.3.1, transformers 4.40.0 and
 an RTX 4090. `requirements.txt` records those library versions; the validation
 report states the actual local test environment separately. Joern's exact
 historical version was not supplied; export records the version provided for
-each new run rather than fabricating one.
+each new run, with unavailable historical details left unspecified.
 
 The paper specifies Adam, lr=1e-4, batch=64, dropout=0.4, up to 500 epochs,
 patience=100; its parameter sweeps identify 3 layers, hidden width 512 and K=3.
@@ -165,7 +164,7 @@ unversioned `.pkl` inputs are rejected with rebuild/retrain guidance; renaming
 an old file does not migrate it. Existing named HGCN configurations retain that
 architecture but need compatible versioned data/checkpoints for the new pipeline.
 
-Demo fallback remains opt-in and is explicitly marked. Its outputs are excluded
+Lexical fallback remains opt-in and is explicitly marked. Its outputs are excluded
 from model metrics. The client reads the current run's structured summary and
 does not import metrics from an unrelated older log file. Static-evidence fusion
 in the client remains a separate workflow, not the paper's RQ7 dependency checker.

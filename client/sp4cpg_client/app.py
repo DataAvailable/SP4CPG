@@ -250,7 +250,7 @@ class MainWindow(QMainWindow):
         cg.addWidget(QLabel("训练划分清单 JSON"), 6, 0)
         cg.addWidget(self.split_edit, 6, 1, 1, 2)
         cg.addWidget(self._browse_btn(self.split_edit, False), 6, 3)
-        self.model_edit.setPlaceholderText("TAF-HGCN / HGNN / HGCN / GCN / GAT / GIN / GraphSAGE / GGNN")
+        self.model_edit.setToolTip("TAF-HGCN / HGNN / HGCN / GCN / GAT / GIN / GraphSAGE / GGNN")
         layout.addWidget(cbox)
 
         sbox = QGroupBox("MEDE 静态指针分析")

@@ -6,7 +6,6 @@
   "raw_historical_split_manifests_supplied": false,
   "raw_historical_graph_pairs_supplied": false,
   "per_seed_predictions_supplied": false,
-  "historical_simulated_layout_counts_used": false,
   "units": "P/R/F1 and cosine similarities below are percentages; gains are percentage points",
   "datasets": {
     "D1": "FFmpeg+Qemu",

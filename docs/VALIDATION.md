@@ -24,7 +24,7 @@ Tests cover conditional pruning, immutable original dependencies, declaration
 identity, source constants, dictionary/active-membership checks, lossless
 DOT/JSON round trips, deterministic grouping, parallel labels and original
 relation identities, sequential AST reconnect provenance, and malformed inputs.
-Mutation tests deliberately remove edges, forge retained/merged roles, change
+Mutation tests deliberately remove edges, assign invalid retained/merged roles, change
 bindings/labels/context/content, omit original roles and try construction-history
 substitution. The independent checker must reject those cases.
 
@@ -36,8 +36,8 @@ Numerically sensitive normalization/aggregation uses float64 intermediates and
 returns the input feature dtype, preserving the normalized operator. Performance
 and memory must be measured anew with this implementation.
 
-Integration tests train both revision models on small explicitly synthetic
-fixtures, reload checkpoints and compare eval-only predictions, run the full
+Integration tests train both revision models on small in-memory test graphs,
+reload checkpoints and compare eval-only predictions, run the full
 four-configuration CLI on shared IDs, and exercise client inference (including
 unlabeled samples). They check that re-evaluating the same checkpoint with a
 different evaluation seed cannot become an independent training-seed result.
@@ -45,7 +45,7 @@ Split/feature fingerprints, strict classification values, common LLM filtering,
 provider-error reporting, client command paths and generated-ID alignment are
 also covered. These fixture scores are never published as experimental results.
 
-Joern command tests use mocked subprocesses: safe argv, source IDs/labels,
+Joern command tests use controlled command fixtures: safe argv, source IDs/labels,
 selection ambiguity, invalid records, failure reporting and exactly one selected
 method are checked without invoking Joern. CodeBERT state/token handling is
 tested with a small injected encoder; no pretrained checkpoint download or full

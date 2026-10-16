@@ -60,7 +60,7 @@ def test_independent_relation_offsets_and_batch_roundtrip():
     assert second.num_hyperedges == 2, "identical memberships remain distinct relations"
 
 
-def test_incomplete_hyperedge_pairs_are_rejected_instead_of_fabricated():
+def test_incomplete_hyperedge_pairs_are_rejected():
     graph = canonical()
     node = {"id": "3", "kind": "CALL", "code": "f3()", "attributes": {}, "entries": ["3"]}
     graph["nodes"].append(node)
@@ -114,7 +114,7 @@ def test_malformed_data_fails_explicitly(mutate, match):
         graph_to_data(graph, torch.ones(3, 2))
 
 
-def test_feature_shape_and_empty_graph_errors_are_not_dummy_samples():
+def test_feature_shape_and_empty_graph_errors_are_reported():
     with pytest.raises(ValueError, match="features"):
         graph_to_data(canonical(), torch.ones(2, 2))
     graph = canonical()
@@ -164,13 +164,13 @@ def test_inconsistent_dictionary_ownership_and_counts_are_rejected():
         graph_to_data(graph, torch.ones(3, 1))
 
 
-class FakeTokenizer:
+class FixtureTokenizer:
     def __call__(self, texts, **options):
         self.options = options
         return {"input_ids": torch.tensor([[len(t)] for t in texts], dtype=torch.long)}
 
 
-class FakeCodeBERT(nn.Module):
+class FixtureCodeEncoder(nn.Module):
     def __init__(self):
         super().__init__()
         self.config = SimpleNamespace(hidden_size=2, _commit_hash="offline-test-revision")
@@ -183,8 +183,8 @@ class FakeCodeBERT(nn.Module):
 
 
 def test_codebert_is_eval_text_only_frozen_and_deterministic_without_download():
-    tokenizer = FakeTokenizer()
-    encoder = CodeGraphEncoder(tokenizer=tokenizer, model=FakeCodeBERT(), batch_size=2)
+    tokenizer = FixtureTokenizer()
+    encoder = CodeGraphEncoder(tokenizer=tokenizer, model=FixtureCodeEncoder(), batch_size=2)
     encoder.train()  # Even a caller toggling train cannot enable encoding dropout.
     first = encoder.encode_code_text(["abc", "z", "hello"])
     second = encoder.encode_code_text(["abc", "z", "hello"])
@@ -216,7 +216,7 @@ def test_embedding_failures_do_not_shift_ids_or_labels(monkeypatch, tmp_path):
             raise ValueError("malformed input")
         return canonical(path.stem)
     monkeypatch.setattr(dot_embedding, "canonical_graph", load)
-    encoder = CodeGraphEncoder(tokenizer=FakeTokenizer(), model=FakeCodeBERT())
+    encoder = CodeGraphEncoder(tokenizer=FixtureTokenizer(), model=FixtureCodeEncoder())
     paths = [tmp_path / "a.dot", tmp_path / "broken.dot", tmp_path / "z.dot"]
     samples, failures = embed_files(paths, encoder, representation="CPG", labels={"a": 1, "z": 0})
     assert [(s.sample_id, s.y.item()) for s in samples] == [("a", 1), ("z", 0)]

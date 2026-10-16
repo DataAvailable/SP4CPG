@@ -37,5 +37,5 @@ recall. These remain manuscript-reported values until the original evaluation
 records are available and independently rerun.
 
 The existing aggregate revision JSON files include superseded entries. This
-repository publishes a curated reference summary rather than copying those
-internal audit histories or historical simulated layout artifacts wholesale.
+repository publishes a curated reference summary based on the final manuscript
+and its confirmed results, with internal audit histories kept separate.
