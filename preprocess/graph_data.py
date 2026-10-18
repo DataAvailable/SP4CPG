@@ -158,7 +158,7 @@ def _endpoint(original_id, dictionary, members):
     return str(physical)
 
 
-def _graph_layout(graph):
+def _graph_layout(graph, *, check_node_kinds=True):
     from preprocess.graph_core import normalize_graph
     if not isinstance(graph, Mapping) or graph.get("schema_version") != SCHEMA_VERSION:
         raise ValueError("Expected graph schema_version=2")
@@ -181,7 +181,7 @@ def _graph_layout(graph):
     node_index = {node_id: index for index, node_id in enumerate(node_ids)}
     dictionary = canonical["dictionary"]
     _check_dictionary(nodes, dictionary)
-    node_types = [node_kind_index(node["kind"]) for node in nodes]
+    node_types = [node_kind_index(node["kind"]) for node in nodes] if check_node_kinds else []
     incidences, roles, relation_types, binary_pairs = [], [], [], set()
     for relation_index, relation in enumerate(canonical["relations"]):
         kind, relation_id = relation["kind"], relation["id"]
@@ -236,9 +236,9 @@ def _graph_layout(graph):
                 binary_pairs=sorted(binary_pairs))
 
 
-def validate_graph(graph):
+def validate_graph(graph, *, check_node_kinds=True):
     """Check the full data layout before any text encoding is performed."""
-    return _graph_layout(graph)["graph"]
+    return _graph_layout(graph, check_node_kinds=check_node_kinds)["graph"]
 
 
 def graph_to_data(graph, features, label=None):
