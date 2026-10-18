@@ -1,78 +1,48 @@
-import os
-import json
-import shutil
+"""Export function-level CPG files with their source-text identities."""
 import argparse
-import subprocess
+import json
+import os
 from pathlib import Path
 
-# ========== 参数设置 ==========
-parser = argparse.ArgumentParser()
-parser.add_argument("--dataset", default='PrimeVul.json', type=str, help="dataset name")
-parser.add_argument("--workers", default=max(1, (os.cpu_count() or 2) // 2), type=int,
-                    help="parallel workers (joern is heavy; start with 2~4)")
-args = parser.parse_args()
-
-# 路径配置
-dataset_file = f"../data/{args.dataset}"  # 原始数据集文件路径
-source_dir = Path("source")  # 提取的 C 源代码文件夹
-dot_output_dir = Path("dots-cpg")
-joern_workspace = Path("workspace")
+try:
+    from .source_identity import run_export
+except ImportError:
+    from source_identity import run_export
 
 
-# 创建目录
-source_dir.mkdir(parents=True, exist_ok=True)
-dot_output_dir.mkdir(parents=True, exist_ok=True)
-joern_workspace.mkdir(parents=True, exist_ok=True)
-
-# 读取 JSON 文件
-with open(dataset_file, "r", encoding="utf-8") as f:
-    if args.dataset == 'PrimeVul.json':
-        data = [json.loads(line) for line in f if line.strip()]
-    elif args.dataset == 'FFmpeg_Qemu.json':
-        data = json.load(f)
-
-for idx, item in enumerate(data):
-    code = item["func"]
-    label = item["target"]
-
-    # 保存为 .c 文件
-    c_source_dir = Path("source/" + f"{idx}")
-    c_source_dir.mkdir(parents=True, exist_ok=True)
-    c_file = c_source_dir / f"{label}.c"
-    with open(c_file, "w", encoding="utf-8") as cf:
-        cf.write(code)
-
-    # 使用 Joern 生成 CPG
-    cpg_bin_path = joern_workspace / f"{idx}-cpg-{label}.bin"
-    dot_path = dot_output_dir / f"{idx}"
-    joern_cmds = [
-        f"joern-parse {c_source_dir} -o {cpg_bin_path}",
-        f"joern-export {cpg_bin_path} --repr cpg14 --out {dot_path}"
-    ]
-
-    print(f"[+] Processing: {c_file}")
-    for cmd in joern_cmds:
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-        if result.returncode != 0:
-            print(f"[!] Error: {cmd}")
-            print(result.stderr)
-            continue
-
-    # 获取并重命名 dot 文件
-    generated_dot = dot_path / "0-cpg.dot"
-    if generated_dot.exists():
+def main(argv=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", default="PrimeVul.json", type=str, help="dataset name")
+    parser.add_argument("--workers", default=max(1, (os.cpu_count() or 2) // 2), type=int,
+                        help="parallel workers (joern is heavy; start with 2~4)")
+    args = parser.parse_args(argv)
+    dataset_file = Path("../data") / args.dataset
+    source_dir, dot_output_dir, joern_workspace = Path("source"), Path("dots-cpg"), Path("workspace")
+    source_dir.mkdir(parents=True, exist_ok=True)
+    dot_output_dir.mkdir(parents=True, exist_ok=True)
+    joern_workspace.mkdir(parents=True, exist_ok=True)
+    with dataset_file.open("r", encoding="utf-8") as stream:
+        if args.dataset == "PrimeVul.json":
+            data = [json.loads(line) for line in stream if line.strip()]
+        elif args.dataset == "FFmpeg_Qemu.json":
+            data = json.load(stream)
+        else:
+            raise ValueError(f"Unknown dataset format for {args.dataset}")
+    failed = 0
+    for idx, item in enumerate(data):
+        code, label = item["func"], item["target"]
         renamed_dot = dot_output_dir / f"{idx}-cpg-{label}.dot"
-        generated_dot.rename(renamed_dot)
+        print(f"[+] Processing function {idx}")
+        try:
+            run_export(code, renamed_dot, source_root=source_dir, workspace_root=joern_workspace)
+        except Exception as error:
+            failed += 1
+            print(f"[!] Function {idx} failed: {error}")
+            continue
         print(f"    --> Saved to {renamed_dot}")
-    else:
-        print(f"[!] Dot file not found for {c_file.name}")
+    print(f"Done. success={len(data) - failed}, failed={failed}")
+    return 1 if failed else 0
 
-    if os.path.exists(dot_path) and os.path.isdir(dot_path):
-        shutil.rmtree(dot_path)
-    else:
-        print(f"错误: 文件夹 '{dot_path}' 不存在")
-    # 清理 Joern 输出目录
-    # for f in (dot_path).glob("*.dot"):
-    #     f.unlink()
 
-print("\n✅ All files processed.")
+if __name__ == "__main__":
+    raise SystemExit(main())

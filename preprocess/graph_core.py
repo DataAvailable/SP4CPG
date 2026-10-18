@@ -82,6 +82,12 @@ def _known(value):
         "", "ANY", "UNKNOWN", "<UNKNOWN>", "?", "NULL", "NONE", "{}", "[]"}
 
 
+def _source_checksum(value):
+    if not isinstance(value, str) or re.fullmatch(r"[0-9a-fA-F]{64}", value) is None:
+        raise ValueError("source_code_sha256 must contain exactly 64 hexadecimal characters")
+    return value.lower()
+
+
 def normalize_graph(graph):
     """Copy and check the graph schema without filling unknown hyperedge bindings."""
     if not isinstance(graph, dict) or not isinstance(graph.get("nodes"), list) or not isinstance(graph.get("relations"), list):
@@ -94,6 +100,8 @@ def normalize_graph(graph):
     out.setdefault("metadata", {})
     if not isinstance(out["metadata"], dict):
         raise ValueError("metadata must be an object")
+    if "source_code_sha256" in out["metadata"]:
+        out["metadata"]["source_code_sha256"] = _source_checksum(out["metadata"]["source_code_sha256"])
     dictionary_supplied = "dictionary" in out
     dictionary = out.setdefault("dictionary", {})
     if not isinstance(dictionary, dict):
@@ -188,9 +196,18 @@ def _unquote(value):
 
 def from_pydot(dot, graph_id=""):
     """Import ordinary DOT edges or a complete dictionary stored in DOT."""
-    stored = dot.get_attributes().get("sp4cpg_json")
+    graph_attributes = dot.get_attributes()
+    source_checksum = (_source_checksum(_unquote(graph_attributes["source_code_sha256"]))
+                       if "source_code_sha256" in graph_attributes else None)
+    stored = graph_attributes.get("sp4cpg_json")
     if stored is not None:
-        return normalize_graph(json.loads(_unquote(stored)))
+        graph = normalize_graph(json.loads(_unquote(stored)))
+        if source_checksum is not None:
+            existing = graph["metadata"].get("source_code_sha256")
+            if existing is not None and existing != source_checksum:
+                raise ValueError("DOT and embedded graph source_code_sha256 values differ")
+            graph["metadata"]["source_code_sha256"] = source_checksum
+        return graph
     nodes, edges = {}, []
 
     def visit(container):
@@ -239,8 +256,11 @@ def from_pydot(dot, graph_id=""):
             kind = {"CFG": "CTRL", "DDG": "DATA"}.get(kind, kind)
             attrs["unbound_memberships"] = True
         relations.append({"kind": kind, "sources": sources, "targets": targets, "bindings": bindings, "attributes": attrs})
+    metadata = {"source_format": "dot"}
+    if source_checksum is not None:
+        metadata["source_code_sha256"] = source_checksum
     graph = normalize_graph({"graph_id": graph_id or _unquote(dot.get_name()), "nodes": list(nodes.values()),
-                             "relations": relations, "metadata": {"source_format": "dot"}})
+                             "relations": relations, "metadata": metadata})
     if any(not relation["bindings"] for relation in graph["relations"]):
         graph["metadata"]["representation"] = "HCPG"
     return graph
